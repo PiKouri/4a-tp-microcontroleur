@@ -14,6 +14,14 @@
 
 // Active l'horloge et règle l'ARR et le PSC du timer visé
 
+void (* handler) (void);
+
+void TIM1_BRK_IRQHandler (void) {handler();} ;
+void TIM2_IRQHandler (void) {handler();} ;
+void TIM3_IRQHandler (void) {handler();} ;
+void TIM4_IRQHandler (void) {handler();} ;
+
+
 void MyTimer_Conf(TIM_TypeDef * Timer,int Arr, int Psc) {
 	Timer->ARR = Arr;
 	Timer->PSC = Psc;
@@ -39,17 +47,19 @@ void MyTimer_Stop(TIM_TypeDef * Timer) {
 
 void MyTimer_IT_Conf(TIM_TypeDef * Timer, void (*IT_function) (void),int Prio) {
 	int offset;
-	if (Timer == TIM1) offset = TIM1_BRK_IRQn;
-	else if (Timer == TIM2) offset = TIM2_IRQn;
-	else if (Timer == TIM3) offset = TIM3_IRQn;
-	else if (Timer == TIM4)	offset = TIM4_IRQn;
+	if (Timer == TIM1) { offset = TIM1_BRK_IRQn; TIM1->DIER |= TIM_DIER_UIE;}
+	else if (Timer == TIM2) { offset = TIM2_IRQn; TIM2->DIER |= TIM_DIER_UIE;}
+	else if (Timer == TIM3) { offset = TIM3_IRQn; TIM3->DIER |= TIM_DIER_UIE;}
+	else if (Timer == TIM4)	{ offset = TIM4_IRQn; TIM4->DIER |= TIM_DIER_UIE;}
 
-
-	//NVIC->ISER [offset] = 1; // Set Enable Register
 	// Pour IPR : 8 bits pour la priorité mais seulement les 4 bits de poids le plus fort sont utilisés
-	NVIC->IP[offset]=(Prio << 4);
+	NVIC->IP[offset]|=(Prio << 4);
+	//NVIC_SetPriority(offset, Prio);
 
-	NVIC_SetVector(offset, (uint32_t) IT_function); // Handler
+	//TIM2_IRQHandler
+	
+	//NVIC_SetVector(offset, (uint32_t) IT_function); // Handler
+	handler = IT_function;
 
 	//TIM_SR_UIF; // Interrupt Flag
 }
@@ -62,7 +72,8 @@ void MyTimer_IT_Enable(TIM_TypeDef * Timer) {
 	else if (Timer == TIM2) offset = TIM2_IRQn;
 	else if (Timer == TIM3) offset = TIM3_IRQn;
 	else if (Timer == TIM4)	offset = TIM4_IRQn;
-	NVIC->ISER [offset] = 1; // Set Enable Register
+	//NVIC->ISER [offset] = 1; // Set Enable Register
+	NVIC_EnableIRQ(offset);
 }
 
 // Interdit les interruptions
@@ -73,5 +84,6 @@ void MyTimer_IT_Disable(TIM_TypeDef * Timer) {
 	else if (Timer == TIM2) offset = TIM2_IRQn;
 	else if (Timer == TIM3) offset = TIM3_IRQn;
 	else if (Timer == TIM4)	offset = TIM4_IRQn;
-	NVIC->ISER [offset] = 0; // Set Enable Register
+	//NVIC->ISER [offset] = 0; // Set Enable Register
+	NVIC_DisableIRQ(offset);
 }
